@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Arion</title>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+
+<style>
+  :root{--bg:#0b1020;--panel:#11162a;--text:#e6e8ee;--muted:#9aa3b2;--accent:#6ee7b7}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Inter,Roboto,sans-serif}
+  .wrap{display:flex;flex-direction:column;height:100dvh}
+  header{padding:16px;background:linear-gradient(180deg,#0f172a,#0b1020);border-bottom:1px solid #1f2942}
+  header h1{margin:0;font-size:18px} header small{color:var(--muted)}
+  .msgs{flex:1;overflow:auto;padding:16px}
+  .bubble{max-width:85%;padding:12px 14px;border-radius:14px;margin:8px 0;line-height:1.35;white-space:pre-wrap}
+  .me{background:#1f2942;margin-left:auto}
+  .ai{background:var(--panel);border:1px solid #1c2440}
+  form{display:flex;gap:8px;padding:12px;border-top:1px solid #1f2942;background:#0c1226}
+  textarea{flex:1;resize:none;min-height:44px;max-height:160px;border-radius:12px;border:1px solid #233055;background:#0f172a;color:var(--text);padding:10px 12px}
+  button{border:0;padding:12px 16px;border-radius:12px;background:var(--accent);color:#0b1020;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Arion</h1>
+      <small>Mon IA en poche</small>
+    </header>
+
+    <div id="msgs" class="msgs"></div>
+
+    <form id="chat">
+      <textarea id="q" placeholder="Écris ta demande…"></textarea>
+      <button type="submit">Envoyer</button>
+    </form>
+  </div>
+
+<script>
+  // 👉 Je colle ICI l’URL de ma Space (et j’ajoute /api/predict)
+  const API_URL = "https://TON-UTILISATEUR-arion-backend.hf.space/api/predict";
+
+  const msgs = document.getElementById('msgs');
+  const form = document.getElementById('chat');
+  const q = document.getElementById('q');
+
+  function addBubble(text, who="ai"){
+    const b = document.createElement('div');
+    b.className = 'bubble ' + (who==="me"?"me":"ai");
+    b.textContent = text;
+    msgs.appendChild(b);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const text = q.value.trim();
+    if(!text) return;
+    q.value = "";
+    addBubble(text, "me");
+    addBubble("…je réfléchis…");
+
+    try{
+      // Appel au backend Gradio /api/predict
+      const r = await fetch(API_URL, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ data: [ text ] })
+      });
+      const j = await r.json();
+      const out = Array.isArray(j.data) ? j.data[0] : JSON.stringify(j);
+      msgs.lastChild.textContent = out;
+    }catch(err){
+      msgs.lastChild.textContent = "Erreur: " + err.message;
+    }
+  });
+
+  // PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', ()=> navigator.serviceWorker.register('./service-worker.js'));
+  }
+</script>
+</body>
+</html>
